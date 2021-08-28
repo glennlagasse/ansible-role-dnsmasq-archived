@@ -1,0 +1,4 @@
+---
+- name: restart dnsmasq
+  service: "name=dnsmasq state={{ dnsmasq_restart_handler_state }}"
+  ignore_errors: "{{ ansible_check_mode }}"

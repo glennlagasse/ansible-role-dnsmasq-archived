@@ -1,0 +1,17 @@
+---
+dnsmasq_package_state: present
+
+dnsmasq_service_state: started
+dnsmasq_service_enabled: true
+dnsmasq_restart_handler_state: restarted
+
+dnsmasq_enable_tftp: false
+dnsmasq_tftp_directory: /srv/tftp
+
+dnsmasq_upstream_servers:
+  - 1.1.1.1
+  - 1.0.0.1
+
+dnsmasq_dhcp_authoritative: true
+
+dnsmasq_addn_hosts: /etc/dnsmasq_static_hosts

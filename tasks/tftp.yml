@@ -1,0 +1,134 @@
+---
+- name: Install PXE/TFTP Packages
+  ansible.builtin.package:
+    name: "{{ pxe_tftp_packages }}"
+    cache_valid_time: 3600
+    state: "{{ dnsmasq_package_state }}"
+  vars:
+    pxe_tftp_packages:
+      - pxelinux
+      - syslinux-common
+
+- name: Configure DNSMasq TFTP
+  ansible.builtin.template:
+    src: dnsmasq_tftp.conf.j2
+    dest: /etc/dnsmasq.d/tftp.conf
+    validate: 'dnsmasq --test --conf-file=%s'
+  notify: restart dnsmasq
+  tags: dnsmasq
+
+- name: Create {{ dnsmasq_tftp_directory }} directory
+  ansible.builtin.file:
+    path: "{{ dnsmasq_tftp_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Create required syslinux files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: dnsmasq
+    remote_src: yes
+  loop:
+    - { src: /usr/lib/syslinux/modules/bios/ldlinux.c32, dest: "{{ dnsmasq_tftp_directory }}/ldlinux.c32" }
+    - { src: /usr/lib/syslinux/modules/bios/libcom32.c32, dest: "{{ dnsmasq_tftp_directory }}/libcom32.c32" }
+    - { src: /usr/lib/syslinux/modules/bios/libutil.c32, dest: "{{ dnsmasq_tftp_directory }}/libutil.c32" }
+    - { src: /usr/lib/syslinux/modules/bios/vesamenu.c32, dest: "{{ dnsmasq_tftp_directory }}/vesamenu.c32" }
+
+- name: Create required pxelinux files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: dnsmasq
+    remote_src: yes
+  loop:
+    - { src: /usr/lib/PXELINUX/pxelinux.0, dest: "{{ dnsmasq_tftp_directory }}/pxelinux.0" }
+
+- name: Create Debian netboot images directory
+  ansible.builtin.file:
+    path: "{{ dnsmasq_tftp_directory }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - debian/bullseye/amd64
+    - debian/buster/amd64
+
+- name: Download Debian Bullseye netboot images
+  ansible.builtin.get_url:
+    url: http://debian.osuosl.org/debian/dists/Debian11.0/main/installer-amd64/current/images/netboot/debian-installer/amd64/{{ item.name }}
+    dest: "{{ dnsmasq_tftp_directory }}/debian/bullseye/amd64/{{ item.name }}"
+    checksum: "{{ item.checksum }}"
+    owner: dnsmasq
+    mode: '0644'
+  loop:
+    - { name: initrd.gz, checksum: md5:7b77e2d0ecb3a6368ebdd7fe8d7361d3 }
+    - { name: linux, checksum: md5:b4c78b71c2788b6e6234b57d872a34b3 }
+
+- name: Download Debian Buster netboot images
+  ansible.builtin.get_url:
+    url: http://debian.osuosl.org/debian/dists/Debian10.10/main/installer-amd64/current/images/netboot/debian-installer/amd64/{{ item.name }}
+    dest: "{{ dnsmasq_tftp_directory }}/debian/buster/amd64/{{ item.name }}"
+    checksum: "{{ item.checksum }}"
+    owner: dnsmasq
+    mode: '0644'
+  loop:
+    - { name: initrd.gz, checksum: md5:6516a3712d4deea83d2250e9d3d08f03 }
+    - { name: linux, checksum: md5:9665a1d34a81c047de8216f57a0a58a8 }
+
+- name: Create preseeds directory
+  ansible.builtin.file:
+    path: "{{ dnsmasq_tftp_directory }}/preseeds"
+    state: directory
+    mode: '0755'
+
+- name: Populate preseed configurations
+  ansible.builtin.copy:
+    src: "files/preseeds/{{ item }}"
+    dest: "{{ dnsmasq_tftp_directory }}/preseeds/{{ item }}"
+    owner: dnsmasq
+    mode: '0644'
+  loop:
+    - buster_preseed.cfg
+    - bullseye_preseed.cfg
+
+- name: Create CentOS netboot images directory
+  ansible.builtin.file:
+    path: "{{ dnsmasq_tftp_directory }}/centos/7"
+    state: directory
+    mode: '0755'
+
+- name: Download CentOS 7 netboot image
+  ansible.builtin.get_url:
+    url: http://centos.osuosl.org/7/os/x86_64/images/pxeboot/{{ item.name }}
+    dest: "{{ dnsmasq_tftp_directory }}/centos/7/{{ item.name }}"
+    checksum: "{{ item.checksum }}"
+    owner: dnsmasq
+    mode: '0644'
+  loop:
+    - { name: initrd.img, checksum: md5:f111c832ebac0a2f8a9fc99eda371205 }
+    - { name: vmlinuz, checksum: md5:ce61bb2ecb36318c56d42c48db166fe3 }
+
+# TODO: Populate stage2 img for CentOS
+#- name: Download CentOS 7 squashfs (stage2) image
+#  ansible.builtin.get_url:
+#    url: http://centos.osuosl.org/7/os/x86_64/LiveOS/squashfs.img
+#    dest: "{{ dnsmasq_tftp_directory }}/centos/7/x86_64/squashfs.img"
+#    checksum: 83359674d2a5e0f9237b90c40b31cb81
+#    owner: dnsmasq
+#    mode: '0644'
+
+# TODO: Setup Ubuntu pxe support
+
+- name: Create /srv/tftp/pxelinux.cfg
+  ansible.builtin.file:
+    path: "{{ dnsmasq_tftp_directory }}/pxelinux.cfg"
+    state: directory
+    mode: '0755'
+
+
+- name: Populate pxelinux.cfg/default
+  ansible.builtin.copy:
+    src: "files/pxelinux_cfg_default"
+    dest: "{{ dnsmasq_tftp_directory }}/pxelinux.cfg/default"
+    owner: dnsmasq
+    mode: '0644'

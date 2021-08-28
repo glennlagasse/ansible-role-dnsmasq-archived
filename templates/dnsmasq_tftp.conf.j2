@@ -1,0 +1,11 @@
+{{ ansible_managed | comment }}
+
+{% if dnsmasq_enable_tftp | bool %}
+dhcp-boot=pxelinux.0,192.168.1.4
+dhcp-option=vendor:PXEClient,6,2b
+dhcp-option=66,"192.168.1.4"
+enable-tftp
+pxe-service=x86PC, "PXE Install", pxelinux
+tftp-root={{ dnsmasq_tftp_directory }}
+tftp-secure
+{% endif %}

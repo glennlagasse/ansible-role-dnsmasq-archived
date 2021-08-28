@@ -1,0 +1,34 @@
+---
+- name: Install DNSMasq
+  ansible.builtin.package:
+    name: dnsmasq
+    cache_valid_time: 3600
+    state: "{{ dnsmasq_package_state }}"
+  notify: restart dnsmasq
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Configure DNSMasq
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: /etc/dnsmasq.d/dnsmasq.conf
+    validate: 'dnsmasq --test --conf-file=%s'
+  notify: restart dnsmasq
+  tags: dnsmasq
+
+- name: Configure static hosts
+  ansible.builtin.template:
+    src: dnsmasq_static_hosts.j2
+    dest: "{{ dnsmasq_addn_hosts }}"
+  when: dnsmasq_static_hosts is defined
+  notify: restart dnsmasq
+  tags: dnsmasq
+
+- include_tasks: tftp.yml
+  when: dnsmasq_enable_tftp | bool
+
+- name: Ensure DNSMasq is started and enabled at boot
+  ansible.builtin.service:
+    name: dnsmasq
+    state: "{{ dnsmasq_service_state }}"
+    enabled: "{{ dnsmasq_service_enabled }}"
+  ignore_errors: "{{ ansible_check_mode }}"
