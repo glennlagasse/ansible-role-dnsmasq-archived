@@ -59,6 +59,11 @@ local=/{{ dnsmasq_domain }}/
   log-facility={{ dnsmasq_log_facility }}
 {% endif %}
 
+{% if dnsmasq_enable_dnssec | bool -%}
+  conf-file=/usr/share/dnsmasq-base/trust-anchors.conf
+  dnssec
+{% endif %}
+
 {% if dnsmasq_static_hosts is defined -%}
   no-hosts
 addn-hosts={{ dnsmasq_addn_hosts }}

@@ -8,6 +8,8 @@ dnsmasq_restart_handler_state: restarted
 dnsmasq_enable_tftp: false
 dnsmasq_tftp_directory: /srv/tftp
 
+dnsmasq_enable_dnssec: true
+
 dnsmasq_upstream_servers:
   - 1.1.1.1
   - 1.0.0.1
